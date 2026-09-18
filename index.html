@@ -362,7 +362,7 @@
         <table id="resultsTable">
           <thead>
             <tr>
-              <th>Diamond size (MM)</th>
+              <th>Diamond size</th>
               <th>Stones required</th>
               <th>Carat / stone</th>
               <th>Total carats</th>
@@ -490,6 +490,7 @@
     {mm:2.90, carat:0.100},
     {mm:3.00, carat:0.110},
     {mm:3.10, carat:0.120},
+    {mm:3.15, carat:0.120},
     {mm:3.20, carat:0.130},
     {mm:3.25, carat:0.135},
     {mm:3.30, carat:0.140},
@@ -856,10 +857,69 @@
     return String(raw).split(/\r\n|\r|\n/).map(function(s){ return s.trim(); }).filter(function(s){ return s !== ''; });
   }
 
-  function addToGroup(groups, mm, qty){
-    var key = mm.toFixed(2);
-    if (!groups.has(key)) groups.set(key, { mm: parseFloat(key), qty: 0 });
+  // A cell can carry a stray leading/trailing line break (common from Excel
+  // "wrap text" formatting, or files exported by other software) even though
+  // it only holds one real value — e.g. "RD(1.8)\r". parseNumeric() rejects
+  // any string containing \r/\n outright, on purpose, so a genuinely
+  // multi-value cell is never mangled into one bogus number. That guard was
+  // also wrongly catching these single-value-with-stray-newline cells. This
+  // resolves a raw cell value down to its one real line when there's exactly
+  // one, so a harmless trailing line break no longer gets the row rejected
+  // as unreadable. A cell with 0 or 2+ real lines is returned unchanged, so
+  // truly empty or genuinely multi-value cells are handled exactly as before.
+  function singleLineValue(raw){
+    if (typeof raw !== 'string') return raw;
+    var lines = extractLines(raw);
+    return lines.length === 1 ? lines[0] : raw;
+  }
+
+  // Matches a fancy-cut shape token like "EM(4*3)", "OV(5.0*4.0)", "PE(5.0*3.0)" —
+  // a short cut-shape code followed by length×width dimensions in mm. Real order
+  // sheets mix these into the same graduating-style cell as plain round sizes
+  // (e.g. "1.1mm\nEM(4*3)"), and a fancy-cut size can never be looked up in
+  // the round-brilliant reference chart the way a round MM size can (carat
+  // weight for a fancy cut depends on its shape, not just one linear size).
+  // Recognizing it here means its stone count is still counted and shown —
+  // flagged as "not in chart" like any other unmatched size — instead of the
+  // whole row being rejected as unreadable just because it has two numbers.
+  var FANCY_CUT_RE = /^([A-Za-z]{2,4})\s*\(\s*(\d+(?:\.\d+)?)\s*[x×*]\s*(\d+(?:\.\d+)?)\s*\)/i;
+
+  function parseFancyCut(line){
+    var m = FANCY_CUT_RE.exec(line);
+    if (!m) return null;
+    var a = parseFloat(m[2]), b = parseFloat(m[3]);
+    if (isNaN(a) || isNaN(b) || a <= 0 || b <= 0) return null;
+    return { shape: m[1].toUpperCase(), a: a, b: b, label: m[1].toUpperCase() + '(' + a + '\u00d7' + b + ')' };
+  }
+
+  // Resolves one already-trimmed, single-line size token (from either a
+  // plain single-value cell or one line of a graduating-style cell) into
+  // either a round MM size or a fancy-cut shape — or null if neither parses.
+  function parseSizeLine(line){
+    if (line === null || line === undefined) return null;
+    var str = String(line).trim();
+    var fancy = parseFancyCut(str);
+    if (fancy) return { kind: 'fancy', shape: fancy.shape, a: fancy.a, b: fancy.b, label: fancy.label };
+    var mm = parseNumeric(str);
+    if (isNaN(mm) || mm <= 0) return null;
+    return { kind: 'round', mm: mm };
+  }
+
+  function addRoundToGroup(groups, mm, qty){
+    var key = 'r:' + mm.toFixed(2);
+    if (!groups.has(key)) groups.set(key, { kind: 'round', mm: parseFloat(mm.toFixed(2)), qty: 0 });
     groups.get(key).qty += qty;
+  }
+
+  function addFancyToGroup(groups, fancy, qty){
+    var key = 'f:' + fancy.shape + ':' + fancy.a.toFixed(2) + 'x' + fancy.b.toFixed(2);
+    if (!groups.has(key)) groups.set(key, { kind: 'fancy', shape: fancy.shape, a: fancy.a, b: fancy.b, label: fancy.label, qty: 0 });
+    groups.get(key).qty += qty;
+  }
+
+  function addSizeToGroup(groups, sizeToken, qty){
+    if (sizeToken.kind === 'round') addRoundToGroup(groups, sizeToken.mm, qty);
+    else addFancyToGroup(groups, sizeToken, qty);
   }
 
   // Handle a row whose MM cell contains 2+ lines (a graduating style using
@@ -873,7 +933,7 @@
   // pushed to `invalidRows` instead.
   function computeCompositeRow(row, rowIndex, mmLines, groups, invalidRows, mapping, rowOffset){
     var multiply = mapping.qtyMode === 'multiply';
-    var mmValues = mmLines.map(parseNumeric);
+    var mmValues = mmLines.map(parseSizeLine);
     var qtyLines, qtyValues, orderQty, mmRawFull, qtyRawFull;
 
     if (multiply){
@@ -885,12 +945,12 @@
       qtyLines = extractLines(bRaw);
       qtyValues = qtyLines.map(parseNumeric);
       if (isNaN(orderQty) || orderQty <= 0 || qtyLines.length !== mmLines.length ||
-          mmValues.some(isNaN) || mmValues.some(function(v){ return v <= 0; }) ||
+          mmValues.some(function(v){ return v === null; }) ||
           qtyValues.some(isNaN) || qtyValues.some(function(v){ return v <= 0; })){
         invalidRows.push({ rowNumber: excelRowNumber(rowIndex, rowOffset), mmRaw: mmRawFull, qtyRaw: qtyRawFull });
         return false;
       }
-      for (var k = 0; k < mmValues.length; k++) addToGroup(groups, mmValues[k], orderQty * qtyValues[k]);
+      for (var k = 0; k < mmValues.length; k++) addSizeToGroup(groups, mmValues[k], orderQty * qtyValues[k]);
     } else {
       var qtyRaw = row[mapping.qtyColIndex];
       mmRawFull = row[mapping.mmIdx];
@@ -898,12 +958,12 @@
       qtyLines = extractLines(qtyRaw);
       qtyValues = qtyLines.map(parseNumeric);
       if (qtyLines.length !== mmLines.length ||
-          mmValues.some(isNaN) || mmValues.some(function(v){ return v <= 0; }) ||
+          mmValues.some(function(v){ return v === null; }) ||
           qtyValues.some(isNaN) || qtyValues.some(function(v){ return v <= 0; })){
         invalidRows.push({ rowNumber: excelRowNumber(rowIndex, rowOffset), mmRaw: mmRawFull, qtyRaw: qtyRawFull });
         return false;
       }
-      for (var j = 0; j < mmValues.length; j++) addToGroup(groups, mmValues[j], qtyValues[j]);
+      for (var j = 0; j < mmValues.length; j++) addSizeToGroup(groups, mmValues[j], qtyValues[j]);
     }
     return true;
   }
@@ -936,22 +996,22 @@
         var aRaw = row[mapping.qtyColIndexA];
         var bRaw = row[mapping.qtyColIndexB];
         if ((mmRaw === null || mmRaw === '') && (aRaw === null || aRaw === '') && (bRaw === null || bRaw === '')) continue;
-        var a = parseNumeric(aRaw), b = parseNumeric(bRaw);
+        var a = parseNumeric(singleLineValue(aRaw)), b = parseNumeric(singleLineValue(bRaw));
         qty = (isNaN(a) || isNaN(b)) ? NaN : a * b;
         qtyDisplay = (aRaw === null ? '' : aRaw) + ' × ' + (bRaw === null ? '' : bRaw);
       } else {
         var qtyRaw = row[mapping.qtyColIndex];
         if ((mmRaw === null || mmRaw === '') && (qtyRaw === null || qtyRaw === '')) continue;
-        qty = parseNumeric(qtyRaw);
+        qty = parseNumeric(singleLineValue(qtyRaw));
         qtyDisplay = (qtyRaw === null ? '' : qtyRaw);
       }
 
-      var mm = parseNumeric(mmRaw);
-      if (isNaN(mm) || isNaN(qty) || mm <= 0 || qty <= 0){
+      var sizeToken = parseSizeLine(mmLines.length === 1 ? mmLines[0] : (mmRaw === null ? '' : String(mmRaw)));
+      if (!sizeToken || isNaN(qty) || qty <= 0){
         invalidRows.push({ rowNumber: excelRowNumber(i, rowOffset), mmRaw: mmRaw, qtyRaw: qtyDisplay });
         continue;
       }
-      addToGroup(groups, mm, qty);
+      addSizeToGroup(groups, sizeToken, qty);
     }
 
     return { groups: groups, invalidRows: invalidRows, compositeCount: compositeCount };
@@ -962,16 +1022,35 @@
   function buildResultsFromGroups(groups){
     var refMap = buildReferenceMap(state.referenceChart);
     return Array.from(groups.values()).map(function(g){
+      if (g.kind === 'fancy'){
+        // Fancy-cut shapes (emerald, oval, pear, …) have no carat-per-stone
+        // entry in the round-brilliant reference chart — there's no single
+        // MM-to-carat relationship for them the way there is for round
+        // stones — so they always render as "not in chart", sorted after
+        // every round size, ordered by their first dimension.
+        return {
+          kind: 'fancy',
+          label: g.label,
+          sortKey: 100000 + g.a,
+          stones: g.qty,
+          caratPerStone: null,
+          totalCarats: null,
+          found: false
+        };
+      }
       var carat = refMap.get(g.mm.toFixed(2));
       var found = carat !== undefined;
       return {
+        kind: 'round',
         mm: g.mm,
+        label: g.mm.toFixed(2) + ' mm',
+        sortKey: g.mm,
         stones: g.qty,
         caratPerStone: found ? carat : null,
         totalCarats: found ? carat * g.qty : null,
         found: found
       };
-    }).sort(function(a, b){ return a.mm - b.mm; });
+    }).sort(function(a, b){ return a.sortKey - b.sortKey; });
   }
 
   function computeResults(){
@@ -1098,7 +1177,7 @@
         ? '<span class="badge ok">OK</span>'
         : '<span class="badge bad">Not in chart</span>';
       tr.innerHTML =
-        '<td>' + r.mm.toFixed(2) + ' mm</td>' +
+        '<td>' + escapeHtml(r.label) + '</td>' +
         '<td>' + fmtInt(r.stones) + '</td>' +
         '<td>' + (r.found ? fmtCarat(r.caratPerStone) : '—') + '</td>' +
         '<td>' + (r.found ? fmtCarat(r.totalCarats) : '—') + '</td>' +
@@ -1115,8 +1194,8 @@
     var issues = [];
     var flaggedRows = results.filter(function(r){ return !r.found; });
     if (flaggedRows.length){
-      issues.push('MM size not found in reference chart — excluded from the carat total: ' +
-        flaggedRows.map(function(r){ return r.mm.toFixed(2) + ' mm (' + fmtInt(r.stones) + ' pcs)'; }).join(', ') + '.');
+      issues.push('Size not found in the round-diamond reference chart — excluded from the carat total: ' +
+        flaggedRows.map(function(r){ return r.label + ' (' + fmtInt(r.stones) + ' pcs)'; }).join(', ') + '.');
     }
     if (state.invalidRows && state.invalidRows.length){
       issues.push('Skipped ' + state.invalidRows.length + ' row(s) with an unreadable, missing or multi-value size/quantity: ' +
@@ -1254,7 +1333,7 @@
   el.downloadResultsBtn.addEventListener('click', function(){
     if (!state.results) return;
     var totalStones = 0, totalCarats = 0;
-    var aoa = [['Diamond Size (MM)','Stones Required','Carat/Stone','Total Carats','Status']];
+    var aoa = [['Diamond Size','Stones Required','Carat/Stone','Total Carats','Status']];
     state.results.forEach(function(r){
       // Stone counts are always whole numbers; round before totaling and
       // before writing the cell so the exported file never shows a
@@ -1265,11 +1344,11 @@
       totalStones += stonesRounded;
       if (r.found) totalCarats += r.totalCarats;
       aoa.push([
-        r.mm.toFixed(2),
+        r.label,
         stonesRounded,
         r.found ? Number(r.caratPerStone.toFixed(6)) : '',
         r.found ? Number(r.totalCarats.toFixed(6)) : '',
-        r.found ? 'OK' : 'MM size not found in reference chart'
+        r.found ? 'OK' : 'Not in reference chart'
       ]);
     });
     aoa.push([]);
