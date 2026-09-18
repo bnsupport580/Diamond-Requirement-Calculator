@@ -1,0 +1,1317 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Diamond Requirement Calculator</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --bg:#f6f4ee;
+    --surface:#ffffff;
+    --surface-2:#eef0f4;
+    --border:#dde0e6;
+    --text:#1c2130;
+    --text-muted:#5c6472;
+    --accent:#1f4fa3;
+    --accent-soft:#e7edf9;
+    --accent-2:#a97c1e;
+    --accent-2-soft:#f6ecd8;
+    --success:#177a4d;
+    --success-bg:#e3f4ec;
+    --warning:#8a5b0a;
+    --warning-bg:#faf0da;
+    --danger:#ad2b22;
+    --danger-bg:#fbe9e6;
+    --shadow:0 1px 2px rgba(20,30,55,.05), 0 10px 28px rgba(20,30,55,.06);
+    --radius:14px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#11141c;
+      --surface:#181c27;
+      --surface-2:#1f2430;
+      --border:#2b3140;
+      --text:#e9ecf3;
+      --text-muted:#9aa2b3;
+      --accent:#7ba4ff;
+      --accent-soft:rgba(123,164,255,.14);
+      --accent-2:#e6bd5e;
+      --accent-2-soft:rgba(230,189,94,.14);
+      --success:#57d19a;
+      --success-bg:rgba(87,209,154,.13);
+      --warning:#e6bd5e;
+      --warning-bg:rgba(230,189,94,.13);
+      --danger:#ff8a80;
+      --danger-bg:rgba(255,138,128,.14);
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 28px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#11141c;
+    --surface:#181c27;
+    --surface-2:#1f2430;
+    --border:#2b3140;
+    --text:#e9ecf3;
+    --text-muted:#9aa2b3;
+    --accent:#7ba4ff;
+    --accent-soft:rgba(123,164,255,.14);
+    --accent-2:#e6bd5e;
+    --accent-2-soft:rgba(230,189,94,.14);
+    --success:#57d19a;
+    --success-bg:rgba(87,209,154,.13);
+    --warning:#e6bd5e;
+    --warning-bg:rgba(230,189,94,.13);
+    --danger:#ff8a80;
+    --danger-bg:rgba(255,138,128,.14);
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 28px rgba(0,0,0,.35);
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:"Manrope",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    padding:32px 16px 64px;
+  }
+  .wrap{max-width:880px;margin:0 auto;display:flex;flex-direction:column;gap:20px;}
+
+  .eyebrow{
+    font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;
+    color:var(--accent);margin:0 0 6px;
+  }
+  h1{
+    font-family:"Fraunces",Georgia,serif;
+    font-weight:600;
+    font-size:clamp(26px,4vw,36px);
+    letter-spacing:-.01em;
+    margin:0 0 8px;
+    text-wrap:balance;
+  }
+  .sub{color:var(--text-muted);font-size:15px;line-height:1.55;margin:0;max-width:62ch;}
+
+  .card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    padding:24px;
+  }
+  .card h2{
+    font-family:"Fraunces",Georgia,serif;
+    font-weight:600;
+    font-size:19px;
+    margin:0 0 4px;
+  }
+  .card .cardHint{color:var(--text-muted);font-size:13.5px;margin:0 0 16px;}
+
+  .dropzone{
+    border:1.5px dashed var(--border);
+    border-radius:12px;
+    background:var(--surface-2);
+    padding:32px 20px;
+    text-align:center;
+    cursor:pointer;
+    transition:border-color .15s ease, background .15s ease;
+  }
+  .dropzone:hover, .dropzone.dragover{
+    border-color:var(--accent);
+    background:var(--accent-soft);
+  }
+  .dropzone .dzIcon{font-size:28px;margin-bottom:8px;display:block;}
+  .dropzone .dzTitle{font-weight:700;font-size:15px;margin:0 0 4px;}
+  .dropzone .dzHint{color:var(--text-muted);font-size:13px;margin:0;}
+  input[type=file]{display:none;}
+
+  .templateRow{margin-top:12px;font-size:13.5px;color:var(--text-muted);}
+  .linkBtn{
+    background:none;border:none;padding:0;color:var(--accent);font:inherit;font-weight:600;
+    cursor:pointer;text-decoration:underline;text-underline-offset:2px;
+  }
+  .linkBtn:focus-visible, button:focus-visible, select:focus-visible, input:focus-visible{
+    outline:2px solid var(--accent);outline-offset:2px;
+  }
+
+  .fieldRow{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;margin-top:16px;}
+  .radioGroup{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:16px;}
+  .radioGroupLabel{font-size:12.5px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;}
+  .radioOption{display:flex;align-items:center;gap:6px;font-size:14.5px;font-weight:500;cursor:pointer;}
+  .radioOption input{accent-color:var(--accent);}
+  .field{display:flex;flex-direction:column;gap:6px;min-width:200px;flex:1;}
+  .field label{font-size:12.5px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;}
+  select, .btn{
+    font:inherit;font-size:14.5px;border-radius:9px;border:1px solid var(--border);
+    padding:10px 12px;background:var(--surface);color:var(--text);
+  }
+  select{appearance:auto;}
+  .btn{
+    background:var(--accent);color:#fff;border-color:var(--accent);font-weight:700;
+    cursor:pointer;padding:10px 18px;white-space:nowrap;
+  }
+  .btn:disabled{opacity:.5;cursor:not-allowed;}
+  .btn.secondary{background:var(--surface);color:var(--text);border-color:var(--border);}
+  .btn.secondary:hover{background:var(--surface-2);}
+
+  .msgBox{
+    border-radius:10px;padding:12px 14px;font-size:13.5px;line-height:1.5;margin-top:14px;
+  }
+  .msgBox.error{background:var(--danger-bg);color:var(--danger);}
+  .msgBox.warning{background:var(--warning-bg);color:var(--warning);}
+  .msgBox ul{margin:6px 0 0;padding-left:18px;}
+  [hidden]{display:none!important;}
+
+  .statsRow{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+  .statTile{
+    background:var(--surface);border:1px solid var(--border);border-radius:12px;
+    padding:16px 16px;box-shadow:var(--shadow);
+  }
+  .statTile .statLabel{font-size:12px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em;}
+  .statTile .statValue{
+    font-family:"Fraunces",Georgia,serif;font-weight:600;font-size:26px;margin-top:6px;
+    font-variant-numeric:tabular-nums;
+  }
+  .statTile.accent2 .statValue{color:var(--accent-2);}
+  .statTile.flagged .statValue{color:var(--danger);}
+
+  .actionsRow{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0 4px;}
+
+  table{width:100%;border-collapse:collapse;font-size:16.5px;font-weight:600;font-variant-numeric:tabular-nums;}
+  th,td{text-align:right;padding:11px 12px;border-bottom:1px solid var(--border);}
+  th:first-child,td:first-child{text-align:left;}
+  thead th{
+    font-size:13.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);
+    font-weight:800;border-bottom:2px solid var(--border);
+  }
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr.flaggedRow{background:var(--danger-bg);}
+  tfoot td{font-weight:800;font-size:18px;border-top:2px solid var(--border);border-bottom:none;padding-top:14px;}
+  .tableScroll{overflow-x:auto;border-radius:10px;}
+
+  .badge{
+    display:inline-block;font-size:12.5px;font-weight:800;padding:3px 9px;border-radius:999px;
+    letter-spacing:.02em;
+  }
+  .badge.ok{background:var(--success-bg);color:var(--success);}
+  .badge.bad{background:var(--danger-bg);color:var(--danger);}
+
+  .collapseHead{
+    display:flex;align-items:center;justify-content:space-between;cursor:pointer;
+    padding:14px 0;
+  }
+  .collapseHead h2{margin:0;}
+  .chev{transition:transform .15s ease;color:var(--text-muted);font-size:14px;}
+  .chev.open{transform:rotate(180deg);}
+  .refMeta{font-size:13px;color:var(--text-muted);margin:0 0 12px;}
+  .refMeta.custom{color:var(--accent-2);font-weight:600;}
+
+  footer.note{color:var(--text-muted);font-size:12.5px;text-align:center;margin-top:8px;}
+
+  @media (max-width:560px){
+    .statsRow{grid-template-columns:1fr;}
+    .fieldRow{flex-direction:column;align-items:stretch;}
+    .card{padding:18px;}
+  }
+  body{background:var(--bg);}
+
+  .lock-screen{
+    position:fixed;inset:0;z-index:9999;
+    display:flex;align-items:center;justify-content:center;
+    background:var(--bg);padding:24px;
+  }
+  .lock-card{
+    background:var(--surface);border:1px solid var(--border);border-radius:16px;
+    padding:36px 32px;max-width:360px;width:100%;text-align:center;
+    box-shadow:0 20px 50px rgba(0,0,0,.08);
+  }
+  .lock-title{
+    font-family:"Fraunces",Georgia,serif;font-weight:600;
+    font-size:22px;letter-spacing:-.01em;margin:0 0 6px;
+  }
+  .lock-sub{color:var(--text-muted);font-size:13.5px;margin:0 0 20px;line-height:1.5;}
+  #lockForm{display:flex;flex-direction:column;gap:10px;}
+  #lockInput{
+    padding:12px 14px;border:1px solid var(--border);border-radius:10px;
+    font-size:15px;font-family:inherit;text-align:center;letter-spacing:.05em;
+  }
+  #lockInput:focus{outline:2px solid var(--accent);outline-offset:1px;}
+  #lockForm button{
+    padding:12px 14px;border:none;border-radius:10px;background:var(--accent);
+    color:#fff;font-weight:700;cursor:pointer;font-size:15px;font-family:inherit;
+  }
+  #lockForm button:hover{opacity:.92;}
+  .lock-error{color:var(--danger,#b3261e);font-size:13px;margin-top:14px;}
+</style>
+</head>
+<body>
+
+<div id="lockScreen" class="lock-screen">
+  <div class="lock-card">
+    <p class="eyebrow">Diamond Requirement Calculator</p>
+    <h2 class="lock-title">Enter passcode</h2>
+    <p class="lock-sub">This calculator is for authorized use only. Enter the passcode to continue.</p>
+    <form id="lockForm" autocomplete="off">
+      <input type="password" id="lockInput" placeholder="Passcode" autocomplete="off">
+      <button type="submit">Unlock</button>
+    </form>
+    <p id="lockError" class="lock-error" hidden>Incorrect passcode. Please try again.</p>
+  </div>
+</div>
+
+<div class="wrap" id="appRoot" style="display:none">
+
+  <header>
+    <p class="eyebrow">Diamond Requirement Calculator</p>
+    <h1>Stone &amp; carat requirements, from your order sheet</h1>
+    <p class="sub">Upload an order Excel file and this tool matches every diamond size against the reference chart, consolidates repeated sizes, and totals the stones and carats you'll need to pull.</p>
+  </header>
+
+  <section class="card" id="uploadCard">
+    <h2>1. Upload your order file</h2>
+    <p class="cardHint">Accepts .xlsx, .xls or .csv. The sheet just needs a column for MM size and a column for quantity — column names and order don't matter.</p>
+
+    <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Upload order Excel file">
+      <span class="dzIcon">💎</span>
+      <p class="dzTitle" id="dzTitle">Drop your order file here, or click to browse</p>
+      <p class="dzHint" id="dzHint">One order sheet at a time · processed entirely in your browser</p>
+      <input type="file" id="orderFileInput" accept=".xlsx,.xls,.csv">
+    </div>
+
+    <div class="templateRow">Not sure of the format? <button class="linkBtn" id="downloadTemplate" type="button">Download a blank order template</button></div>
+
+    <div id="sheetPicker" class="fieldRow" hidden>
+      <div class="field">
+        <label for="sheetSelect">Sheet to use</label>
+        <select id="sheetSelect"></select>
+      </div>
+    </div>
+
+    <div id="combineWrap" hidden style="margin-top:2px;">
+      <label class="radioOption"><input type="checkbox" id="combineToggle"> Add up matching sizes across all sheets in this file</label>
+    </div>
+
+    <div id="mappingPanel" hidden>
+      <div class="msgBox warning" id="mappingMsg">We couldn't automatically tell which columns to use. Please pick them below.</div>
+      <div class="fieldRow">
+        <div class="field">
+          <label for="mmColSelect">MM size column</label>
+          <select id="mmColSelect"></select>
+        </div>
+      </div>
+      <div class="radioGroup">
+        <span class="radioGroupLabel">Quantity</span>
+        <label class="radioOption"><input type="radio" name="qtyMode" id="qtyModeSingle" value="single" checked> One column</label>
+        <label class="radioOption"><input type="radio" name="qtyMode" id="qtyModeMultiply" value="multiply"> Multiply two columns</label>
+      </div>
+      <div class="fieldRow" id="singleQtyRow">
+        <div class="field">
+          <label for="qtyColSelect">Quantity column</label>
+          <select id="qtyColSelect"></select>
+        </div>
+      </div>
+      <div id="multiplyQtyRow" hidden>
+        <div class="fieldRow">
+          <div class="field">
+            <label for="qtyColASelect">Quantity column A</label>
+            <select id="qtyColASelect"></select>
+          </div>
+          <div class="field">
+            <label for="qtyColBSelect">Quantity column B</label>
+            <select id="qtyColBSelect"></select>
+          </div>
+        </div>
+        <p class="cardHint" style="margin-top:-4px;">Both columns are multiplied together for each row &mdash; e.g. order quantity &times; stones per piece.</p>
+      </div>
+      <div class="fieldRow">
+        <button class="btn" id="confirmMapping" type="button">Calculate</button>
+      </div>
+    </div>
+
+    <div id="uploadError" class="msgBox error" hidden></div>
+  </section>
+
+  <section id="resultsSection" hidden>
+
+    <div class="statsRow">
+      <div class="statTile">
+        <div class="statLabel">Total stones required</div>
+        <div class="statValue" id="statStones">0</div>
+      </div>
+      <div class="statTile accent2">
+        <div class="statLabel">Total carats required</div>
+        <div class="statValue" id="statCarats">0.000 ct</div>
+      </div>
+      <div class="statTile flagged">
+        <div class="statLabel">Sizes not in chart</div>
+        <div class="statValue" id="statFlagged">0</div>
+      </div>
+    </div>
+
+    <div class="actionsRow">
+      <button class="btn" id="downloadResultsBtn" type="button">Download results (.xlsx)</button>
+      <button class="btn secondary" id="resetBtn" type="button">Process another order</button>
+    </div>
+
+    <div id="issuesPanel" class="msgBox warning" hidden></div>
+
+    <div class="card" style="margin-top:14px;">
+      <h2>2. Consolidated requirement</h2>
+      <p class="cardHint" id="resultsHint">Matching sizes from the order have been combined into one row each.</p>
+      <p class="templateRow" style="margin-top:-8px;margin-bottom:16px;">Using <span id="mappingSummary"></span>. <button class="linkBtn" id="changeColumnsBtn" type="button">Change columns</button></p>
+      <div class="tableScroll">
+        <table id="resultsTable">
+          <thead>
+            <tr>
+              <th>Diamond size (MM)</th>
+              <th>Stones required</th>
+              <th>Carat / stone</th>
+              <th>Total carats</th>
+              <th style="text-align:center;">Status</th>
+            </tr>
+          </thead>
+          <tbody id="resultsBody"></tbody>
+          <tfoot>
+            <tr>
+              <td>Grand total</td>
+              <td id="footStones">0</td>
+              <td></td>
+              <td id="footCarats">0.000 ct</td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" id="referenceSection">
+    <div class="collapseHead" id="toggleReference" role="button" tabindex="0">
+      <h2>Reference chart in use</h2>
+      <span class="chev" id="referenceChev">▾</span>
+    </div>
+    <div id="referencePanel" hidden>
+      <p class="refMeta" id="refMeta">This is the reference chart built into the app — every visitor's calculations use these values automatically.</p>
+      <div class="tableScroll" style="max-height:280px;overflow-y:auto;">
+        <table id="referenceTable">
+          <thead><tr><th>MM size</th><th>Carat / stone</th></tr></thead>
+          <tbody id="referenceBody"></tbody>
+        </table>
+      </div>
+      <div style="margin-top:14px;">
+        <button class="linkBtn" id="toggleOverride" type="button">Try a different reference chart for this session</button>
+      </div>
+      <div id="overridePanel" hidden style="margin-top:12px;">
+        <p class="cardHint" style="margin-bottom:10px;">This replaces the chart only in your browser, for testing. It resets when you reload the page and never affects anyone else's link.</p>
+        <div class="dropzone" id="refDropzone" tabindex="0" role="button" aria-label="Upload a reference chart to test with">
+          <p class="dzTitle" style="margin:0;">Click to upload a reference chart</p>
+          <input type="file" id="refFileInput" accept=".xlsx,.xls,.csv">
+        </div>
+        <div id="refUploadError" class="msgBox error" hidden></div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="note">Calculations run locally in your browser — no order data is uploaded anywhere.</footer>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  // ---- Passcode gate. This is a simple front-door lock, not real security:
+  // the passcode lives in this page's own source, so anyone who views source
+  // or opens dev tools can read or bypass it. It's meant only to keep casual
+  // visitors from wandering in, not to protect sensitive data.
+  (function(){
+    var PASSCODE = 'S&J@580';
+    var lockScreen = document.getElementById('lockScreen');
+    var appRoot = document.getElementById('appRoot');
+    var form = document.getElementById('lockForm');
+    var input = document.getElementById('lockInput');
+    var errorMsg = document.getElementById('lockError');
+    if (!lockScreen || !appRoot || !form || !input) return;
+    function unlock(){
+      lockScreen.style.display = 'none';
+      appRoot.style.display = '';
+      try { sessionStorage.setItem('diamondCalcUnlocked', '1'); } catch(e){ /* ignore */ }
+    }
+    form.addEventListener('submit', function(e){
+      e.preventDefault();
+      if (input.value === PASSCODE){
+        unlock();
+      } else if (errorMsg) {
+        errorMsg.hidden = false;
+        input.value = '';
+        input.focus();
+      }
+    });
+    var alreadyUnlocked = false;
+    try { alreadyUnlocked = sessionStorage.getItem('diamondCalcUnlocked') === '1'; } catch(e){ /* ignore */ }
+    if (alreadyUnlocked){
+      unlock();
+    } else {
+      input.focus();
+    }
+  })();
+
+  // ---- Official reference chart (MM → carat/stone). Update by sending a new
+  // reference file to Claude in the project conversation; it will replace this
+  // array and republish so every visitor gets the update automatically. ----
+  var DEFAULT_REFERENCE_CHART = [
+    {mm:0.80, carat:0.003},
+    {mm:0.90, carat:0.004},
+    {mm:1.00, carat:0.004},
+    {mm:1.10, carat:0.006},
+    {mm:1.15, carat:0.007},
+    {mm:1.20, carat:0.008},
+    {mm:1.25, carat:0.009},
+    {mm:1.30, carat:0.010},
+    {mm:1.35, carat:0.011},
+    {mm:1.40, carat:0.012},
+    {mm:1.45, carat:0.013},
+    {mm:1.50, carat:0.014},
+    {mm:1.55, carat:0.016},
+    {mm:1.60, carat:0.018},
+    {mm:1.70, carat:0.021},
+    {mm:1.75, carat:0.021},
+    {mm:1.80, carat:0.025},
+    {mm:1.90, carat:0.030},
+    {mm:2.00, carat:0.035},
+    {mm:2.10, carat:0.040},
+    {mm:2.20, carat:0.044},
+    {mm:2.25, carat:0.045},
+    {mm:2.30, carat:0.052},
+    {mm:2.40, carat:0.058},
+    {mm:2.50, carat:0.069},
+    {mm:2.60, carat:0.074},
+    {mm:2.70, carat:0.080},
+    {mm:2.75, carat:0.085},
+    {mm:2.80, carat:0.090},
+    {mm:2.90, carat:0.100},
+    {mm:3.00, carat:0.110},
+    {mm:3.10, carat:0.120},
+    {mm:3.20, carat:0.130},
+    {mm:3.25, carat:0.135},
+    {mm:3.30, carat:0.140},
+    {mm:3.40, carat:0.150},
+    {mm:3.50, carat:0.165},
+    {mm:3.60, carat:0.180},
+    {mm:3.65, carat:0.180},
+    {mm:3.70, carat:0.190},
+    {mm:3.75, carat:0.200},
+    {mm:3.80, carat:0.210},
+    {mm:3.90, carat:0.230},
+    {mm:4.00, carat:0.250},
+    {mm:4.10, carat:0.270},
+    {mm:4.20, carat:0.300},
+    {mm:4.25, carat:0.310},
+    {mm:4.30, carat:0.320},
+    {mm:4.40, carat:0.340},
+    {mm:4.50, carat:0.350},
+    {mm:4.60, carat:0.370},
+    {mm:5.00, carat:0.500},
+    {mm:5.50, carat:0.650},
+    {mm:6.00, carat:0.850},
+    {mm:6.50, carat:1.000}
+  ];
+
+  var MM_RE = /\bmm\b|size|diamet|\bdia\b/i;
+  // Deliberately no bare "stone" match — costing sheets commonly have
+  // "Stone Price" / "Stone Weight" / "Stone Amount" columns that are not quantities.
+  var QTY_RE = /\bqty\b|\bquantity\b|\bpcs\b|\bpieces?\b|\bcount\b|\bnos\b|\bno\.?\s*of\b|\bunits?\b/i;
+  var CARAT_RE = /carat|\bcts?\b|\bct\b|weight/i;
+
+  var state = {
+    referenceChart: DEFAULT_REFERENCE_CHART.slice(),
+    referenceIsCustom: false,
+    workbook: null,
+    sheetNames: [],
+    currentSheetName: null,
+    currentSheetRows: null,
+    currentHeaders: null,
+    headerRowIndex: 0,
+    rowOffset: 0,
+    mmColIndex: null,
+    qtyMode: 'single',       // 'single' or 'multiply'
+    qtyColIndex: null,       // single mode
+    qtyColIndexA: null,      // multiply mode
+    qtyColIndexB: null,      // multiply mode
+    results: null,
+    invalidRows: null,
+    compositeRowCount: 0,
+    combineMode: false,
+    combineSkippedSheets: [],
+    combineIncludedSheets: [],
+    downloadsApi: null,
+    downloadsChecked: false
+  };
+
+  var el = {};
+  ['dropzone','orderFileInput','dzTitle','dzHint','downloadTemplate',
+   'sheetPicker','sheetSelect','combineWrap','combineToggle','mappingPanel','mappingMsg','mmColSelect',
+   'qtyModeSingle','qtyModeMultiply','singleQtyRow','multiplyQtyRow',
+   'qtyColSelect','qtyColASelect','qtyColBSelect','confirmMapping',
+   'uploadError','resultsSection','statStones','statCarats','statFlagged',
+   'downloadResultsBtn','resetBtn','issuesPanel','resultsBody','footStones','footCarats',
+   'resultsHint','mappingSummary','changeColumnsBtn',
+   'toggleReference','referencePanel','referenceChev','refMeta','referenceBody',
+   'toggleOverride','overridePanel','refDropzone','refFileInput','refUploadError'
+  ].forEach(function(id){ el[id] = document.getElementById(id); });
+
+  // Strip apostrophes too: real-world headers like "Q'ty" must still match /qty/i.
+  function normalizeHeader(h){ return String(h===null||h===undefined?'':h).trim().toLowerCase().replace(/['’]/g,''); }
+
+  function parseNumeric(v){
+    if (v === null || v === undefined) return NaN;
+    if (typeof v === 'number') return v;
+    var raw = String(v);
+    // Reject multi-value cells (e.g. a graduated-ring row listing several sizes
+    // or quantities on separate lines) instead of mangling them into one bogus
+    // number — treat as unreadable rather than guessing.
+    if (/[\r\n]/.test(raw)) return NaN;
+    var numTokens = raw.match(/-?\d+(\.\d+)?/g);
+    if (numTokens && numTokens.length > 1) return NaN;
+    var s = raw.replace(/[^0-9.\-]/g,'');
+    if (s === '' || s === '-' || s === '.') return NaN;
+    return parseFloat(s);
+  }
+
+  function detectColumn(headers, re, exclude){
+    var matches = [];
+    headers.forEach(function(h, i){
+      if (exclude && exclude.indexOf(i) !== -1) return;
+      if (re.test(normalizeHeader(h))) matches.push(i);
+    });
+    return matches;
+  }
+
+  function findHeaderRow(rows, reA, reB){
+    var limit = Math.min(rows.length, 8);
+    var i, row, headers, hasA, hasB;
+    for (i=0;i<limit;i++){
+      row = rows[i] || [];
+      headers = row.map(normalizeHeader);
+      hasA = headers.some(function(h){ return reA.test(h); });
+      hasB = headers.some(function(h){ return reB.test(h); });
+      if (hasA && hasB) return i;
+    }
+    for (i=0;i<rows.length;i++){
+      row = rows[i];
+      if (row && row.some(function(c){ return c!==null && c!=='' && c!==undefined; })) return i;
+    }
+    return 0;
+  }
+
+  function nonEmptySheetNames(wb){
+    return wb.SheetNames.filter(function(name){
+      var ws = wb.Sheets[name];
+      if (!ws) return false;
+      var rows = XLSX.utils.sheet_to_json(ws, {header:1, blankrows:false});
+      return rows && rows.length > 0;
+    });
+  }
+
+  function buildReferenceMap(chart){
+    var map = new Map();
+    chart.forEach(function(r){ map.set(r.mm.toFixed(2), r.carat); });
+    return map;
+  }
+
+  function fmtCarat(n){
+    if (!isFinite(n)) return '—';
+    if (n === 0) return '0.000 ct';
+    var decimals = 3;
+    while (decimals < 6 && parseFloat(n.toFixed(decimals)) === 0) decimals++;
+    return n.toFixed(decimals) + ' ct';
+  }
+  function fmtInt(n){ return Math.round(n).toLocaleString(); }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
+    });
+  }
+  function cleanCellText(v){
+    return (v === null || v === undefined) ? '' : String(v).replace(/\s+/g, ' ').trim();
+  }
+
+  // Converts a 0-based row-array index back into the row number Excel itself
+  // shows the user (accounts for a sheet's used range not necessarily
+  // starting at row 1 — pass that sheet's own offset, since it varies sheet
+  // to sheet within the same workbook).
+  function excelRowNumber(i, rowOffset){ return i + rowOffset + 1; }
+
+  // A sheet's own "Total" / "Grand Total" / "Subtotal" row (common at the
+  // bottom of a costing sheet) is not an order line — skip it outright rather
+  // than reporting it as a row with missing size/quantity data.
+  var TOTAL_ROW_RE = /^(grand\s+)?(total|subtotal)s?$/i;
+  function isTotalRow(row){
+    if (!row) return false;
+    return row.some(function(c){ return c !== null && c !== undefined && TOTAL_ROW_RE.test(String(c).trim()); });
+  }
+
+  // ---------------- Order file handling ----------------
+
+  function showUploadError(msg){ el.uploadError.textContent = msg; el.uploadError.hidden = false; }
+  function clearUploadError(){ el.uploadError.hidden = true; el.uploadError.textContent = ''; }
+
+  function resetOrderUI(){
+    el.resultsSection.hidden = true;
+    el.mappingPanel.hidden = true;
+    el.sheetPicker.hidden = true;
+    el.combineWrap.hidden = true;
+    el.combineToggle.checked = false;
+    el.sheetSelect.disabled = false;
+    el.changeColumnsBtn.hidden = false;
+    clearUploadError();
+    el.orderFileInput.value = '';
+    state.workbook = null;
+    state.currentSheetRows = null;
+    state.results = null;
+    state.combineMode = false;
+    state.combineSkippedSheets = [];
+    state.combineIncludedSheets = [];
+  }
+
+  function handleOrderFile(file){
+    clearUploadError();
+    el.mappingPanel.hidden = true;
+    if (typeof XLSX === 'undefined'){
+      showUploadError('The spreadsheet engine failed to load. Please refresh the page and try again.');
+      return;
+    }
+    file.arrayBuffer().then(function(buf){
+      var wb;
+      try { wb = XLSX.read(buf, {type:'array'}); }
+      catch(e){ showUploadError('This file could not be read. Please upload a valid .xlsx, .xls or .csv file.'); return; }
+      var sheets = nonEmptySheetNames(wb);
+      if (sheets.length === 0){ showUploadError('This file has no data on any sheet.'); return; }
+      state.workbook = wb;
+      state.sheetNames = sheets;
+      state.combineMode = false;
+      el.combineToggle.checked = false;
+      el.sheetSelect.disabled = false;
+      el.changeColumnsBtn.hidden = false;
+      if (sheets.length > 1){
+        el.sheetSelect.innerHTML = '';
+        sheets.forEach(function(name){
+          var opt = document.createElement('option');
+          opt.value = name; opt.textContent = name;
+          el.sheetSelect.appendChild(opt);
+        });
+        el.sheetPicker.hidden = false;
+        el.combineWrap.hidden = false;
+      } else {
+        el.sheetPicker.hidden = true;
+        el.combineWrap.hidden = true;
+      }
+      loadSheet(sheets[0]);
+    }).catch(function(){
+      showUploadError('This file could not be read. Please upload a valid .xlsx, .xls or .csv file.');
+    });
+  }
+
+  function loadSheet(sheetName){
+    state.currentSheetName = sheetName;
+    var ws = state.workbook.Sheets[sheetName];
+    // Keep blank rows (blankrows:true) and record the sheet's starting row
+    // (its used range often doesn't begin at row 1) so the array index below
+    // can be converted back to the row number Excel actually shows the user.
+    var range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+    state.rowOffset = range.s.r;
+    var rows = XLSX.utils.sheet_to_json(ws, {header:1, blankrows:true, defval:null});
+    state.currentSheetRows = rows;
+    var headerIdx = findHeaderRow(rows, MM_RE, QTY_RE);
+    state.headerRowIndex = headerIdx;
+    var headers = rows[headerIdx] || [];
+    state.currentHeaders = headers;
+    var mmMatches = detectColumn(headers, MM_RE);
+    var qtyMatches = detectColumn(headers, QTY_RE, mmMatches);
+
+    if (mmMatches.length === 1 && qtyMatches.length === 1){
+      state.mmColIndex = mmMatches[0];
+      state.qtyMode = 'single';
+      state.qtyColIndex = qtyMatches[0];
+      el.mappingPanel.hidden = true;
+      computeResults();
+    } else if (mmMatches.length === 1 && qtyMatches.length === 2){
+      // Two quantity-like columns (e.g. "order qty" and "stones per unit") —
+      // multiply them together per row rather than guessing which is which.
+      state.mmColIndex = mmMatches[0];
+      state.qtyMode = 'multiply';
+      state.qtyColIndexA = qtyMatches[0];
+      state.qtyColIndexB = qtyMatches[1];
+      el.mappingPanel.hidden = true;
+      computeResults();
+    } else {
+      populateMappingPanel(headers, {
+        mmIndex: mmMatches[0],
+        qtyMode: qtyMatches.length >= 2 ? 'multiply' : 'single',
+        qtyIndex: qtyMatches[0],
+        qtyIndexA: qtyMatches[0],
+        qtyIndexB: qtyMatches[1],
+        message: 'We couldn’t automatically tell which columns to use. Please pick them below.'
+      });
+    }
+  }
+
+  function fillSelect(select, headers, preferIndex){
+    select.innerHTML = '';
+    headers.forEach(function(h, i){
+      var opt = document.createElement('option');
+      opt.value = String(i);
+      var label = cleanCellText(h);
+      opt.textContent = label === '' ? ('Column ' + (i + 1)) : label;
+      select.appendChild(opt);
+    });
+    if (preferIndex !== undefined && preferIndex !== null && preferIndex >= 0) select.value = String(preferIndex);
+  }
+
+  function setQtyModeUI(mode){
+    el.qtyModeSingle.checked = (mode === 'single');
+    el.qtyModeMultiply.checked = (mode === 'multiply');
+    el.singleQtyRow.hidden = (mode !== 'single');
+    el.multiplyQtyRow.hidden = (mode !== 'multiply');
+  }
+
+  function populateMappingPanel(headers, opts){
+    fillSelect(el.mmColSelect, headers, opts.mmIndex);
+    fillSelect(el.qtyColSelect, headers, opts.qtyIndex);
+    fillSelect(el.qtyColASelect, headers, opts.qtyIndexA);
+    fillSelect(el.qtyColBSelect, headers, opts.qtyIndexB);
+    setQtyModeUI(opts.qtyMode || 'single');
+    el.mappingMsg.textContent = opts.message || 'Confirm which columns to use.';
+    el.mappingPanel.hidden = false;
+    el.mappingPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  el.qtyModeSingle.addEventListener('change', function(){ if (el.qtyModeSingle.checked) setQtyModeUI('single'); });
+  el.qtyModeMultiply.addEventListener('change', function(){ if (el.qtyModeMultiply.checked) setQtyModeUI('multiply'); });
+
+  el.confirmMapping.addEventListener('click', function(){
+    var mmIdx = parseInt(el.mmColSelect.value, 10);
+    var mode = el.qtyModeMultiply.checked ? 'multiply' : 'single';
+    if (mode === 'single'){
+      var qtyIdx = parseInt(el.qtyColSelect.value, 10);
+      if (qtyIdx === mmIdx){
+        showUploadError('The MM size column and quantity column can’t be the same column.');
+        return;
+      }
+      state.qtyMode = 'single';
+      state.qtyColIndex = qtyIdx;
+    } else {
+      var aIdx = parseInt(el.qtyColASelect.value, 10);
+      var bIdx = parseInt(el.qtyColBSelect.value, 10);
+      if (aIdx === bIdx || aIdx === mmIdx || bIdx === mmIdx){
+        showUploadError('Please choose the MM size column and two different quantity columns.');
+        return;
+      }
+      state.qtyMode = 'multiply';
+      state.qtyColIndexA = aIdx;
+      state.qtyColIndexB = bIdx;
+    }
+    state.mmColIndex = mmIdx;
+    clearUploadError();
+    el.mappingPanel.hidden = true;
+    computeResults();
+  });
+
+  el.changeColumnsBtn.addEventListener('click', function(){
+    var headers = state.currentHeaders || [];
+    populateMappingPanel(headers, {
+      mmIndex: state.mmColIndex,
+      qtyMode: state.qtyMode,
+      qtyIndex: state.qtyMode === 'single' ? state.qtyColIndex : null,
+      qtyIndexA: state.qtyColIndexA,
+      qtyIndexB: state.qtyColIndexB,
+      message: 'Pick the columns to use for this sheet.'
+    });
+  });
+
+  el.sheetSelect.addEventListener('change', function(){
+    if (state.combineMode) return;
+    loadSheet(el.sheetSelect.value);
+  });
+
+  el.combineToggle.addEventListener('change', function(){
+    state.combineMode = el.combineToggle.checked;
+    el.sheetSelect.disabled = state.combineMode;
+    el.changeColumnsBtn.hidden = state.combineMode;
+    if (state.combineMode){
+      el.mappingPanel.hidden = true;
+      clearUploadError();
+      computeCombinedResults();
+    } else {
+      loadSheet(el.sheetSelect.value);
+    }
+  });
+
+  // Split a cell's raw text into non-blank lines. Used to detect and unpack
+  // "graduating" style rows, where one cell lists several diamond sizes
+  // (one per line, e.g. "RD(1.2)\nRD(1.6)") and the paired quantity cell
+  // lists the matching per-size stone count on the same line number
+  // (e.g. "13\n13"). Order-of-lines is how the two cells are matched up.
+  function extractLines(raw){
+    if (raw === null || raw === undefined) return [];
+    return String(raw).split(/\r\n|\r|\n/).map(function(s){ return s.trim(); }).filter(function(s){ return s !== ''; });
+  }
+
+  function addToGroup(groups, mm, qty){
+    var key = mm.toFixed(2);
+    if (!groups.has(key)) groups.set(key, { mm: parseFloat(key), qty: 0 });
+    groups.get(key).qty += qty;
+  }
+
+  // Handle a row whose MM cell contains 2+ lines (a graduating style using
+  // several diamond sizes in one order line). Always resolves the row —
+  // either by adding each size's stones to `groups`, or by recording it in
+  // `invalidRows` — never both, and never guesses when the two cells'
+  // line counts don't match up cleanly. `mapping` and `rowOffset` describe
+  // the sheet this row came from (kept explicit, not read off `state`, so
+  // this same function works when combining several sheets at once).
+  // Returns true if the row was resolved into `groups`, false if it was
+  // pushed to `invalidRows` instead.
+  function computeCompositeRow(row, rowIndex, mmLines, groups, invalidRows, mapping, rowOffset){
+    var multiply = mapping.qtyMode === 'multiply';
+    var mmValues = mmLines.map(parseNumeric);
+    var qtyLines, qtyValues, orderQty, mmRawFull, qtyRawFull;
+
+    if (multiply){
+      var aRaw = row[mapping.qtyColIndexA];
+      var bRaw = row[mapping.qtyColIndexB];
+      mmRawFull = row[mapping.mmIdx];
+      qtyRawFull = (aRaw === null ? '' : aRaw) + ' × ' + (bRaw === null ? '' : bRaw);
+      orderQty = parseNumeric(aRaw);
+      qtyLines = extractLines(bRaw);
+      qtyValues = qtyLines.map(parseNumeric);
+      if (isNaN(orderQty) || orderQty <= 0 || qtyLines.length !== mmLines.length ||
+          mmValues.some(isNaN) || mmValues.some(function(v){ return v <= 0; }) ||
+          qtyValues.some(isNaN) || qtyValues.some(function(v){ return v <= 0; })){
+        invalidRows.push({ rowNumber: excelRowNumber(rowIndex, rowOffset), mmRaw: mmRawFull, qtyRaw: qtyRawFull });
+        return false;
+      }
+      for (var k = 0; k < mmValues.length; k++) addToGroup(groups, mmValues[k], orderQty * qtyValues[k]);
+    } else {
+      var qtyRaw = row[mapping.qtyColIndex];
+      mmRawFull = row[mapping.mmIdx];
+      qtyRawFull = (qtyRaw === null ? '' : qtyRaw);
+      qtyLines = extractLines(qtyRaw);
+      qtyValues = qtyLines.map(parseNumeric);
+      if (qtyLines.length !== mmLines.length ||
+          mmValues.some(isNaN) || mmValues.some(function(v){ return v <= 0; }) ||
+          qtyValues.some(isNaN) || qtyValues.some(function(v){ return v <= 0; })){
+        invalidRows.push({ rowNumber: excelRowNumber(rowIndex, rowOffset), mmRaw: mmRawFull, qtyRaw: qtyRawFull });
+        return false;
+      }
+      for (var j = 0; j < mmValues.length; j++) addToGroup(groups, mmValues[j], qtyValues[j]);
+    }
+    return true;
+  }
+
+  // Walks one sheet's data rows under a given column mapping and returns its
+  // MM-size groups, unreadable rows, and graduating-row count. Pulled out of
+  // computeResults() so the exact same row logic can run once per sheet when
+  // combining totals across an entire workbook.
+  function computeRowsForSheet(rows, headerIdx, mapping, rowOffset){
+    var groups = new Map();
+    var invalidRows = [];
+    var compositeCount = 0;
+    var multiply = mapping.qtyMode === 'multiply';
+
+    for (var i = headerIdx + 1; i < rows.length; i++){
+      var row = rows[i];
+      if (!row || row.every(function(c){ return c === null || c === ''; })) continue;
+      if (isTotalRow(row)) continue;
+      var mmRaw = row[mapping.mmIdx];
+      var mmLines = extractLines(mmRaw);
+
+      if (mmLines.length >= 2){
+        // Graduating-style row: several sizes in one cell — handled separately.
+        if (computeCompositeRow(row, i, mmLines, groups, invalidRows, mapping, rowOffset)) compositeCount++;
+        continue;
+      }
+
+      var qty, qtyDisplay;
+      if (multiply){
+        var aRaw = row[mapping.qtyColIndexA];
+        var bRaw = row[mapping.qtyColIndexB];
+        if ((mmRaw === null || mmRaw === '') && (aRaw === null || aRaw === '') && (bRaw === null || bRaw === '')) continue;
+        var a = parseNumeric(aRaw), b = parseNumeric(bRaw);
+        qty = (isNaN(a) || isNaN(b)) ? NaN : a * b;
+        qtyDisplay = (aRaw === null ? '' : aRaw) + ' × ' + (bRaw === null ? '' : bRaw);
+      } else {
+        var qtyRaw = row[mapping.qtyColIndex];
+        if ((mmRaw === null || mmRaw === '') && (qtyRaw === null || qtyRaw === '')) continue;
+        qty = parseNumeric(qtyRaw);
+        qtyDisplay = (qtyRaw === null ? '' : qtyRaw);
+      }
+
+      var mm = parseNumeric(mmRaw);
+      if (isNaN(mm) || isNaN(qty) || mm <= 0 || qty <= 0){
+        invalidRows.push({ rowNumber: excelRowNumber(i, rowOffset), mmRaw: mmRaw, qtyRaw: qtyDisplay });
+        continue;
+      }
+      addToGroup(groups, mm, qty);
+    }
+
+    return { groups: groups, invalidRows: invalidRows, compositeCount: compositeCount };
+  }
+
+  // Looks up carat/stone for each MM group and returns the sorted results
+  // array the results table/stat tiles/download all render from.
+  function buildResultsFromGroups(groups){
+    var refMap = buildReferenceMap(state.referenceChart);
+    return Array.from(groups.values()).map(function(g){
+      var carat = refMap.get(g.mm.toFixed(2));
+      var found = carat !== undefined;
+      return {
+        mm: g.mm,
+        stones: g.qty,
+        caratPerStone: found ? carat : null,
+        totalCarats: found ? carat * g.qty : null,
+        found: found
+      };
+    }).sort(function(a, b){ return a.mm - b.mm; });
+  }
+
+  function computeResults(){
+    var mapping = {
+      mmIdx: state.mmColIndex,
+      qtyMode: state.qtyMode,
+      qtyColIndex: state.qtyColIndex,
+      qtyColIndexA: state.qtyColIndexA,
+      qtyColIndexB: state.qtyColIndexB
+    };
+    var r = computeRowsForSheet(state.currentSheetRows, state.headerRowIndex, mapping, state.rowOffset);
+    state.compositeRowCount = r.compositeCount;
+    state.results = buildResultsFromGroups(r.groups);
+    state.invalidRows = r.invalidRows;
+    renderResults();
+  }
+
+  // Auto-detects a column mapping for an arbitrary sheet's headers, the same
+  // way loadSheet() does for the active sheet. Returns null when detection
+  // is ambiguous (0, or 3+, matches) rather than guessing — used when
+  // combining every sheet in a workbook, where there's no per-sheet UI to
+  // fall back on.
+  function autoDetectMapping(headers){
+    var mmMatches = detectColumn(headers, MM_RE);
+    var qtyMatches = detectColumn(headers, QTY_RE, mmMatches);
+    if (mmMatches.length === 1 && qtyMatches.length === 1){
+      return { mmIdx: mmMatches[0], qtyMode: 'single', qtyColIndex: qtyMatches[0] };
+    }
+    if (mmMatches.length === 1 && qtyMatches.length === 2){
+      return { mmIdx: mmMatches[0], qtyMode: 'multiply', qtyColIndexA: qtyMatches[0], qtyColIndexB: qtyMatches[1] };
+    }
+    return null;
+  }
+
+  // Combines every sheet in the workbook into one set of MM-size totals —
+  // e.g. 1.3mm/560 stones on one tab plus 1.3mm/560 stones on another
+  // becomes a single 1.3mm/1,120-stone line. Each sheet is auto-detected and
+  // walked independently (its own header row, its own row offset), then
+  // their groups are summed together by MM size. A sheet whose columns can't
+  // be auto-detected is left out and reported, rather than guessed at.
+  function computeCombinedResults(){
+    var masterGroups = new Map();
+    var invalidRows = [];
+    var compositeCount = 0;
+    var skippedSheets = [];
+    var includedSheets = [];
+
+    state.sheetNames.forEach(function(sheetName){
+      var ws = state.workbook.Sheets[sheetName];
+      var range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+      var rowOffset = range.s.r;
+      var rows = XLSX.utils.sheet_to_json(ws, {header:1, blankrows:true, defval:null});
+      var headerIdx = findHeaderRow(rows, MM_RE, QTY_RE);
+      var headers = rows[headerIdx] || [];
+      var mapping = autoDetectMapping(headers);
+
+      if (!mapping){
+        skippedSheets.push(sheetName);
+        return;
+      }
+
+      var r = computeRowsForSheet(rows, headerIdx, mapping, rowOffset);
+      r.groups.forEach(function(g, key){
+        if (!masterGroups.has(key)) masterGroups.set(key, { mm: g.mm, qty: 0 });
+        masterGroups.get(key).qty += g.qty;
+      });
+      r.invalidRows.forEach(function(ir){ ir.sheetName = sheetName; invalidRows.push(ir); });
+      compositeCount += r.compositeCount;
+      includedSheets.push(sheetName);
+    });
+
+    state.compositeRowCount = compositeCount;
+    state.results = buildResultsFromGroups(masterGroups);
+    state.invalidRows = invalidRows;
+    state.combineSkippedSheets = skippedSheets;
+    state.combineIncludedSheets = includedSheets;
+    renderResults();
+  }
+
+  function columnLabel(idx){
+    var headers = state.currentHeaders || [];
+    var label = cleanCellText(headers[idx]);
+    return label === '' ? ('column ' + (idx + 1)) : ('“' + label + '”');
+  }
+
+  function renderMappingSummary(){
+    if (state.combineMode){
+      var included = state.combineIncludedSheets || [];
+      el.mappingSummary.textContent = 'combined totals from ' + included.length + ' sheet' +
+        (included.length === 1 ? '' : 's') + ' (' + included.map(cleanCellText).join(', ') + ')';
+      return;
+    }
+    var mmLabel = columnLabel(state.mmColIndex);
+    var qtyLabel = state.qtyMode === 'multiply'
+      ? (columnLabel(state.qtyColIndexA) + ' × ' + columnLabel(state.qtyColIndexB) + ' (multiplied)')
+      : columnLabel(state.qtyColIndex);
+    el.mappingSummary.textContent = mmLabel + ' as MM size and ' + qtyLabel + ' as quantity';
+  }
+
+  function renderResultsHint(){
+    var base = state.combineMode
+      ? 'Matching sizes have been added together across every sheet in this file.'
+      : 'Matching sizes from the order have been combined into one row each.';
+    if (state.compositeRowCount > 0){
+      base += ' Includes ' + state.compositeRowCount + ' graduating-style row(s) (multiple sizes in one line) split out by size.';
+    }
+    el.resultsHint.textContent = base;
+  }
+
+  function renderResults(){
+    var results = state.results;
+    var totalStones = 0, totalCarats = 0, flaggedCount = 0;
+    el.resultsBody.innerHTML = '';
+    renderResultsHint();
+    renderMappingSummary();
+
+    results.forEach(function(r){
+      totalStones += r.stones;
+      if (r.found) totalCarats += r.totalCarats; else flaggedCount++;
+
+      var tr = document.createElement('tr');
+      if (!r.found) tr.className = 'flaggedRow';
+      var statusHtml = r.found
+        ? '<span class="badge ok">OK</span>'
+        : '<span class="badge bad">Not in chart</span>';
+      tr.innerHTML =
+        '<td>' + r.mm.toFixed(2) + ' mm</td>' +
+        '<td>' + fmtInt(r.stones) + '</td>' +
+        '<td>' + (r.found ? fmtCarat(r.caratPerStone) : '—') + '</td>' +
+        '<td>' + (r.found ? fmtCarat(r.totalCarats) : '—') + '</td>' +
+        '<td style="text-align:center;">' + statusHtml + '</td>';
+      el.resultsBody.appendChild(tr);
+    });
+
+    el.statStones.textContent = fmtInt(totalStones);
+    el.statCarats.textContent = fmtCarat(totalCarats);
+    el.statFlagged.textContent = String(flaggedCount);
+    el.footStones.textContent = fmtInt(totalStones);
+    el.footCarats.textContent = fmtCarat(totalCarats);
+
+    var issues = [];
+    var flaggedRows = results.filter(function(r){ return !r.found; });
+    if (flaggedRows.length){
+      issues.push('MM size not found in reference chart — excluded from the carat total: ' +
+        flaggedRows.map(function(r){ return r.mm.toFixed(2) + ' mm (' + fmtInt(r.stones) + ' pcs)'; }).join(', ') + '.');
+    }
+    if (state.invalidRows && state.invalidRows.length){
+      issues.push('Skipped ' + state.invalidRows.length + ' row(s) with an unreadable, missing or multi-value size/quantity: ' +
+        state.invalidRows.slice(0, 8).map(function(r){
+          var where = r.sheetName ? (escapeHtml(cleanCellText(r.sheetName)) + ' – row ' + r.rowNumber) : ('row ' + r.rowNumber);
+          return where + ' ("' + escapeHtml(cleanCellText(r.mmRaw)) + '" / "' + escapeHtml(cleanCellText(r.qtyRaw)) + '")';
+        }).join(', ') + (state.invalidRows.length > 8 ? ', …' : '') + '.');
+    }
+    if (state.combineMode && state.combineSkippedSheets && state.combineSkippedSheets.length){
+      issues.push('Couldn’t automatically tell which columns to use on ' + state.combineSkippedSheets.length +
+        ' sheet(s), so they were left out of the combined total: ' +
+        state.combineSkippedSheets.map(function(s){ return escapeHtml(cleanCellText(s)); }).join(', ') +
+        '. Turn off combining and open each one from the sheet dropdown to map its columns, then re-check its numbers separately.');
+    }
+    if (issues.length){
+      el.issuesPanel.innerHTML = '<strong>Please review:</strong><ul><li>' + issues.join('</li><li>') + '</li></ul>';
+      el.issuesPanel.hidden = false;
+    } else {
+      el.issuesPanel.hidden = true;
+    }
+
+    el.resultsSection.hidden = false;
+    el.resultsSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  // ---------------- Reference chart panel ----------------
+
+  function renderReferenceTable(){
+    el.referenceBody.innerHTML = '';
+    state.referenceChart.slice().sort(function(a,b){return a.mm-b.mm;}).forEach(function(r){
+      var tr = document.createElement('tr');
+      tr.innerHTML = '<td>' + r.mm.toFixed(2) + ' mm</td><td>' + fmtCarat(r.carat) + '</td>';
+      el.referenceBody.appendChild(tr);
+    });
+    if (state.referenceIsCustom){
+      el.refMeta.textContent = 'Custom chart loaded for this browser session only — it resets on reload and is not shared with other visitors.';
+      el.refMeta.className = 'refMeta custom';
+    } else {
+      el.refMeta.textContent = 'This is the reference chart built into the app — every visitor\'s calculations use these values automatically.';
+      el.refMeta.className = 'refMeta';
+    }
+  }
+
+  el.toggleReference.addEventListener('click', function(){
+    var open = el.referencePanel.hidden;
+    el.referencePanel.hidden = !open;
+    el.referenceChev.classList.toggle('open', open);
+  });
+  el.toggleReference.addEventListener('keydown', function(e){
+    if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); el.toggleReference.click(); }
+  });
+
+  el.toggleOverride.addEventListener('click', function(){
+    el.overridePanel.hidden = !el.overridePanel.hidden;
+  });
+
+  function showRefUploadError(msg){ el.refUploadError.textContent = msg; el.refUploadError.hidden = false; }
+
+  function handleRefFile(file){
+    el.refUploadError.hidden = true;
+    file.arrayBuffer().then(function(buf){
+      var wb;
+      try { wb = XLSX.read(buf, {type:'array'}); }
+      catch(e){ showRefUploadError('This file could not be read.'); return; }
+      var sheets = nonEmptySheetNames(wb);
+      if (!sheets.length){ showRefUploadError('This file has no data.'); return; }
+      var ws = wb.Sheets[sheets[0]];
+      var rows = XLSX.utils.sheet_to_json(ws, {header:1, blankrows:false, defval:null});
+      var headerIdx = findHeaderRow(rows, MM_RE, CARAT_RE);
+      var headers = rows[headerIdx] || [];
+      var mmMatches = detectColumn(headers, MM_RE);
+      var caratMatches = detectColumn(headers, CARAT_RE, mmMatches);
+      if (mmMatches.length !== 1 || caratMatches.length !== 1){
+        showRefUploadError('Couldn’t find a clear MM column and a clear carat column in this file.');
+        return;
+      }
+      var chart = [];
+      for (var i = headerIdx + 1; i < rows.length; i++){
+        var row = rows[i];
+        if (!row) continue;
+        var mm = parseNumeric(row[mmMatches[0]]);
+        var carat = parseNumeric(row[caratMatches[0]]);
+        if (isNaN(mm) || isNaN(carat) || mm <= 0 || carat <= 0) continue;
+        chart.push({ mm: mm, carat: carat });
+      }
+      if (!chart.length){ showRefUploadError('No valid MM / carat rows were found in this file.'); return; }
+      state.referenceChart = chart;
+      state.referenceIsCustom = true;
+      renderReferenceTable();
+      if (state.currentSheetRows) computeResults();
+    }).catch(function(){ showRefUploadError('This file could not be read.'); });
+  }
+
+  // ---------------- Template download ----------------
+
+  function downloadWorkbook(aoa, sheetName, filename){
+    if (typeof XLSX === 'undefined') return;
+    var ws = XLSX.utils.aoa_to_sheet(aoa);
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    var out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    var blob = new Blob([out], { type: 'application/octet-stream' });
+    offerDownload(filename, blob);
+  }
+
+  // Plain, ordinary browser download — works the same in every browser with
+  // no special permission, account, or platform capability involved. This
+  // file is meant to be opened directly (double-clicked, or opened from an
+  // email/chat attachment), not hosted inside Claude's artifact sandbox, so
+  // there's no confirmation box to explain: the browser just saves the file,
+  // the same as clicking a download link on any ordinary website.
+  function offerDownload(filename, blob){
+    try {
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+    } catch (e){
+      alert('The download could not be completed in this browser. Please try a different browser (Chrome or Edge).');
+    }
+  }
+
+  el.downloadTemplate.addEventListener('click', function(){
+    downloadWorkbook(
+      [['MM Size','Quantity'], [1.5, 250], [2, 180], [2.5, 100]],
+      'Order Template',
+      'diamond-order-template.xlsx'
+    );
+  });
+
+  el.downloadResultsBtn.addEventListener('click', function(){
+    if (!state.results) return;
+    var totalStones = 0, totalCarats = 0;
+    var aoa = [['Diamond Size (MM)','Stones Required','Carat/Stone','Total Carats','Status']];
+    state.results.forEach(function(r){
+      // Stone counts are always whole numbers; round before totaling and
+      // before writing the cell so the exported file never shows a
+      // floating-point artifact like 17678.130252100837 for what should be
+      // a clean integer (the on-screen table already rounds via fmtInt —
+      // this keeps the downloaded file consistent with what's displayed).
+      var stonesRounded = Math.round(r.stones);
+      totalStones += stonesRounded;
+      if (r.found) totalCarats += r.totalCarats;
+      aoa.push([
+        r.mm.toFixed(2),
+        stonesRounded,
+        r.found ? Number(r.caratPerStone.toFixed(6)) : '',
+        r.found ? Number(r.totalCarats.toFixed(6)) : '',
+        r.found ? 'OK' : 'MM size not found in reference chart'
+      ]);
+    });
+    aoa.push([]);
+    aoa.push(['Grand Total', totalStones, '', Number(totalCarats.toFixed(6)), '']);
+    if (state.combineMode && state.combineIncludedSheets && state.combineIncludedSheets.length){
+      aoa.push([]);
+      aoa.push(['Combined from sheets:', state.combineIncludedSheets.join(', ')]);
+    }
+    downloadWorkbook(aoa, 'Requirements', 'diamond-stone-requirements' + (state.combineMode ? '-combined' : '') + '.xlsx');
+  });
+
+  el.resetBtn.addEventListener('click', resetOrderUI);
+
+  // ---------------- Upload wiring ----------------
+
+  function wireDropzone(zone, input, onFile){
+    zone.addEventListener('click', function(){ input.click(); });
+    zone.addEventListener('keydown', function(e){
+      if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); input.click(); }
+    });
+    zone.addEventListener('dragover', function(e){ e.preventDefault(); zone.classList.add('dragover'); });
+    zone.addEventListener('dragleave', function(){ zone.classList.remove('dragover'); });
+    zone.addEventListener('drop', function(e){
+      e.preventDefault();
+      zone.classList.remove('dragover');
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) onFile(e.dataTransfer.files[0]);
+    });
+    input.addEventListener('change', function(){
+      if (input.files && input.files[0]) onFile(input.files[0]);
+    });
+  }
+
+  wireDropzone(el.dropzone, el.orderFileInput, handleOrderFile);
+  wireDropzone(el.refDropzone, el.refFileInput, handleRefFile);
+
+  // ---------------- Claude runtime (downloads capability) ----------------
+
+  // ---------------- Boot ----------------
+
+  renderReferenceTable();
+
+})();
+</script>
+</body>
+</html>
